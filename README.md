@@ -17,7 +17,7 @@ Then, update your dependencies:
 ## Usage
 
     result = Openstack.authenticate("http://keystone/v3",
-                                   "admin", "password", "admin")
+                                    "admin", "password", "admin")
     case result do
       {:ok, token} -> Neutron.network_list(token, "RegionOne", limit: 2)
     end
@@ -44,6 +44,7 @@ Or using environment variables:
     export OS_PROJECT_NAME=admin
     export OS_USERNAME=admin
     export OS_PASSWORD=password
+    export OS_REGION=RegionOne
     export OS_DOMAIN_NAME=Default # optional
 
 ### Interactive shell
