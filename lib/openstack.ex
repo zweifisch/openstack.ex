@@ -84,10 +84,11 @@ defmodule Openstack do
     end
   end
 
-  defmacro defresource(name, service, path, singular, actions \\ [:list, :create, :show, :delete]) do
+  defmacro defresource(name, service, path, singular, actions \\ [:list, :create, :show, :delete, :modify]) do
     predef = [
       [:list, :get, ""],
       [:create, :post, ""],
+      [:modify, :patch, "/:id"],
       [:show, :get, "/:id"],
       [:delete, :delete, "/:id"],
     ]
@@ -114,16 +115,25 @@ defmodule Openstack do
                                  unquote(path) <> unquote((quote do: id) in args
                                                           && (quote do: (String.replace(unquote(segment), ":id", id)))
                                                           || segment),
-                                 unquote((quote do: body) in args && (quote do: body)), params) do
+                                 unquote((quote do: body) in args && (quote do: %{unquote(:"#{singular}") => body})),
+                                 params) do
             {:ok, body} ->
               case unquote(action) do
                 :list ->
-                  {:ok, Dict.get(body, unquote(plural))}
+                  {:ok, Dict.get(body, unquote(plural), body)}
+                :delete -> {:ok, body}
                 _ ->
-                  {:ok, Dict.get(body, unquote(singular))}
+                  {:ok, Dict.get(body, unquote(singular), body)}
               end
             x -> x
           end
+        end
+        def unquote(:"#{name}_#{action}!")(token, region, unquote_splicing(args), params \\ []) do
+          Openstack.request(token, region, unquote(service), unquote(method),
+                                 unquote(path) <> unquote((quote do: id) in args
+                                                          && (quote do: (String.replace(unquote(segment), ":id", id)))
+                                                          || segment),
+                                 unquote((quote do: body) in args && (quote do: body)), params)
         end
       end
     end

@@ -2,11 +2,15 @@ defmodule Openstack.Cli do
 
   @fields %{
     user: ~w(name id enabled domain_id email),
+    project: ~w(name id enabled domain_id),
     role: ~w(name id),
     server: ~w(name id),
     "server-detail": ~w(id name OS-EXT-SRV-ATTR:host status tenant_id),
     network: ~w(name id status provider:network_type tenant_id),
     subnet: ~w(name id status cider tenant_id gateway_ip network_id),
+    flavor: ~w(name id),
+    image: ~w(name id status visibility owner),
+    "flavor-detail": ~w(name id vcpus ram swap disk),
   }
 
   def main(args) do
@@ -35,6 +39,7 @@ defmodule Openstack.Cli do
   end
 
   def try_exec(resource, action, id \\ nil, options, params) do
+    params = Enum.into(params, %{})
     method = String.to_atom("#{String.replace(resource, "-", "_")}_#{String.replace(action, "-", "_")}")
     module = Enum.find [Openstack.Keystone,
                         Openstack.Neutron,
@@ -70,10 +75,10 @@ defmodule Openstack.Cli do
       {:ok, result} ->
         cond do
           fields && is_list(result) -> IO.puts Table.table(Enum.map(result, &(Dict.take(&1, fields))), :unicode)
-          fields && is_map(result) -> IO.puts Table.table(Dict.take(result, fields), :unicode)
           true -> IO.puts Table.table(result, :unicode)
         end
       {:error, %HTTPoison.Error{reason: reason}} -> IO.puts reason
+      {:error, error} when is_bitstring error -> IO.puts error
       {:error, error} -> IO.inspect error
     end
   end
