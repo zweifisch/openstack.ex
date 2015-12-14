@@ -7,7 +7,7 @@ defmodule Openstack.Keystone do
   defresource "domain", "identity", "/domains", "domain"
   defresource "region", "identity", "/regions", "region"
   defresource "credential", "identity", "/credentials", "credential"
-  defresource "role_assignment", "identity", "/role_assignments", "roll_assignment", [:list]
+  defresource "role_assignment", "identity", "/role_assignments", "roll_assignment", only: [:list]
   defresource "role", "identity", "/roles", "role"
 
 end

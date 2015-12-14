@@ -27,7 +27,7 @@ defmodule Openstack do
                %{methods: ["password"],
                  password: %{user: user}}}}
     if scope do
-      body = put_in(body, [:auth, :identity, :scope], scope)
+      body = put_in(body, [:auth, :scope], scope)
     end
     authenticate(url, body)
   end
@@ -35,20 +35,21 @@ defmodule Openstack do
   @doc """
   password auth with project scope
 
-      authenticate("http://127.0.0.1:5000/v3", "admin", "secret", "admin")
+      authenticate("http://127.0.0.1:5000/v3", "admin", "secret", "admin", "Default")
   """
-  def authenticate(url, name, password, project) do
-    authenticate(url, %{name: name, password: password}, %{project: %{name: project}})
+  def authenticate(url, name, password, project, domain) do
+    authenticate(url, %{name: name, password: password},
+                 %{project: %{name: project, domain: %{name: domain}}})
   end
 
   @doc """
   password auth with project scope
 
-      authenticate("http://127.0.0.1:5000/v3", "admin", "secret", "services", "Default")
+      authenticate("http://127.0.0.1:5000/v3", "admin", "secret", "services", "Default", "Default")
   """
-  def authenticate(url, name, password, project, user_domain) do
+  def authenticate(url, name, password, project, domain, user_domain) do
     authenticate(url, %{name: name, password: password, domain: %{name: user_domain}},
-                 %{project: %{name: project}})
+                 %{project: %{name: project, domain: %{name: domain}}})
   end
 
   def endpoint(token, type) do
@@ -72,36 +73,39 @@ defmodule Openstack do
                             {"Content-Type", "application/json"}],
                            [params: params, proxy: System.get_env("http_proxy")]) do
       {:ok, %HTTPoison.Response{body: body, status_code: code}} ->
+        if "" == body do
+          body = "{}"
+        end
         case Poison.decode(body) do
           {:ok, decoded} ->
             cond do
               code < 400 -> {:ok, decoded}
               true -> {:error, decoded}
             end
-          x -> x
+          _ -> {:error, body}
         end
       x -> x
     end
   end
 
-  defmacro defresource(name, service, path, singular, actions \\ [:list, :create, :show, :delete, :modify]) do
+  defmacro defresource(name, service, path, singular, actions \\ []) do
     predef = [
-      [:list, :get, ""],
-      [:create, :post, ""],
-      [:modify, :patch, "/:id"],
-      [:show, :get, "/:id"],
-      [:delete, :delete, "/:id"],
+      list: {:get, ""},
+      create: {:post, ""},
+      update: {:patch, "/:id"},
+      show: {:get, "/:id"},
+      delete: {:delete, "/:id"},
     ]
     cond do
       is_tuple(singular) ->
         {singular, plural} = singular
       true -> plural = "#{singular}s"
     end
-    actions = Enum.map actions, fn
-      action when is_list(action) -> action
-      action -> Enum.find predef, fn [x,_,_]-> x == action end
+    case Keyword.pop(actions, :only) do
+      {nil, actions} -> actions = Keyword.merge(predef, actions)
+      {only, actions} -> actions = Keyword.merge(Keyword.take(predef, only), actions)
     end
-    Enum.map actions, fn [action, method, segment] ->
+    Enum.map actions, fn {action, {method, segment}} ->
       args = []
       if segment =~ ~r/:id/ do
         args = [quote do: id]

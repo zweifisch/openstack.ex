@@ -11,6 +11,11 @@ defmodule Openstack.Cli do
     flavor: ~w(name id),
     image: ~w(name id status visibility owner),
     "flavor-detail": ~w(name id vcpus ram swap disk),
+    "floatingip": ~w(floating_ip_address id tenant_id status),
+    domain: ~w(name id enabled),
+    volume: ~w(name id),
+    "volume-detail": ~w(name id size user_id),
+    router: ~w(id name status tenant_id),
   }
 
   def main(args) do
@@ -18,7 +23,8 @@ defmodule Openstack.Cli do
     env = [
       os_username: System.get_env("OS_USERNAME"),
       os_password: System.get_env("OS_PASSWORD"),
-      os_project_name: System.get_env("OS_PROJECT_NAME"),
+      os_project_name: System.get_env("OS_PROJECT_NAME") || System.get_env("OS_TENANT_NAME"),
+      os_domain_name: System.get_env("OS_DOMAIN_NAME") || System.get_env("OS_USER_DOMAIN_NAME") || "Default",
       os_user_domain_name: System.get_env("OS_USER_DOMAIN_NAME") || "Default",
       os_auth_url: String.replace(System.get_env("OS_AUTH_URL"), "v2.0", "v3"),
       os_region: System.get_env("OS_REGION") || "RegionOne"
@@ -46,7 +52,7 @@ defmodule Openstack.Cli do
                         Openstack.Nova,
                         Openstack.Cinder,
                         Openstack.Ceilometer,
-                         Openstack.Glance], fn (x)->
+                        Openstack.Glance], fn (x)->
       Keyword.has_key?(x.__info__(:functions), method) end
     if module do
       user = %{name: options[:os_username], password: options[:os_password]}
@@ -55,7 +61,7 @@ defmodule Openstack.Cli do
       end
       scope = nil
       if options[:os_project_name] do
-        scope = %{project: %{name: options[:os_project_name]}}
+        scope = %{project: %{name: options[:os_project_name], domain: %{name: options[:os_domain_name]}}}
       end
       case Openstack.authenticate(options[:os_auth_url], user, scope) do
         {:ok, token} ->
