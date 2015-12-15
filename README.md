@@ -85,3 +85,5 @@ Or using environment variables:
 
     firewall-policy create --name plicy
     firewall create --firewall-policy-id <id>
+
+    lb-pool create --name asdf --lb-method ROUND_ROBIN --protocol TCP --subnet-id <id>

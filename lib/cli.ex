@@ -5,17 +5,22 @@ defmodule Openstack.Cli do
     project: ~w(name id enabled domain_id),
     role: ~w(name id),
     server: ~w(name id),
-    "server-detail": ~w(id name OS-EXT-SRV-ATTR:host status tenant_id),
+    server_detail: ~w(name id OS-EXT-SRV-ATTR:host status tenant_id),
     network: ~w(name id status provider:network_type tenant_id),
     subnet: ~w(name id status cider tenant_id gateway_ip network_id),
     flavor: ~w(name id),
     image: ~w(name id status visibility owner),
-    "flavor-detail": ~w(name id vcpus ram swap disk),
-    "floatingip": ~w(floating_ip_address id tenant_id status),
+    flavor_detail: ~w(name id vcpus ram swap disk),
+    floatingip: ~w(floating_ip_address id tenant_id status),
     domain: ~w(name id enabled),
     volume: ~w(name id),
-    "volume-detail": ~w(name id size user_id),
-    router: ~w(id name status tenant_id),
+    volume_detail: ~w(name id size user_id),
+    router: ~w(name id status tenant_id),
+    firewall_rule: ~w(name id action firewall_policy_id tenant_id),
+    firewall_policy: ~w(name id action tenant_id),
+    vpn_ipsecpolicy: ~w(id tenant_id encapsulation_mode encryption_algorithm),
+    vpn_ikepolicy: ~w(id auth_algorithm description encryption_algorithm),
+    security_group: ~w(id name tenant_id),
   }
 
   def main(args) do
@@ -36,12 +41,17 @@ defmodule Openstack.Cli do
       [] ->
         %URI{host: host, port: port} = URI.parse env[:os_auth_url]
         repl(env, "(#{env[:os_username]}@#{host}:#{port}) ")
-      [resource, action] -> try_exec(resource, action, Keyword.merge(env, options), Keyword.drop(options, keys))
-        |> pretty(Dict.get(@fields, String.to_atom(resource)))
-      [resource, action, id] -> try_exec(resource, action, id, Keyword.merge(env, options), Keyword.drop(options, keys))
-        |> pretty(Dict.get(@fields, String.to_atom(resource)))
-      _ -> IO.puts "usage: openstack server list"
+      [resource, action] ->
+        try_exec(resource, action, Keyword.merge(env, options), Keyword.drop(options, keys)) |> pretty(resource)
+      [resource, action, id] ->
+        try_exec(resource, action, id, Keyword.merge(env, options), Keyword.drop(options, keys)) |> pretty(resource)
+      _ ->
+        IO.puts "usage: openstack server list"
     end
+  end
+
+  def get_fields(resource) do
+    Dict.get(@fields, resource |> String.replace("-", "_") |> String.to_atom)
   end
 
   def try_exec(resource, action, id \\ nil, options, params) do
@@ -76,7 +86,8 @@ defmodule Openstack.Cli do
     end
   end
 
-  def pretty(result, fields) do
+  def pretty(result, resource) do
+    fields = get_fields(resource)
     case result do
       {:ok, result} ->
         cond do
@@ -97,10 +108,10 @@ defmodule Openstack.Cli do
         input = String.strip x, ?\n
         {options, argv, _} = OptionParser.parse(OptionParser.split input)
         case argv do
-          [resource, action] -> try_exec(resource, action, env, options)
-            |> pretty(Dict.get(@fields, String.to_atom(resource)))
-          [resource, action, id] -> try_exec(resource, action, id, env, options)
-            |> pretty(Dict.get(@fields, String.to_atom(resource)))
+          [resource, action] ->
+            try_exec(resource, action, env, options) |> pretty(resource)
+          [resource, action, id] ->
+            try_exec(resource, action, id, env, options) |> pretty(resource)
           _ -> ""
         end
         repl(env, prompt)
