@@ -21,6 +21,7 @@ defmodule Openstack.Cli do
     vpn_ipsecpolicy: ~w(id tenant_id encapsulation_mode encryption_algorithm),
     vpn_ikepolicy: ~w(id auth_algorithm description encryption_algorithm),
     security_group: ~w(id name tenant_id),
+    security_group_rule: ~w(id direction security_group_id tenant_id),
   }
 
   def main(args) do
@@ -41,10 +42,8 @@ defmodule Openstack.Cli do
       [] ->
         %URI{host: host, port: port} = URI.parse env[:os_auth_url]
         repl(env, "(#{env[:os_username]}@#{host}:#{port}) ")
-      [resource, action] ->
-        try_exec(resource, action, Keyword.merge(env, options), Keyword.drop(options, keys)) |> pretty(resource)
-      [resource, action, id] ->
-        try_exec(resource, action, id, Keyword.merge(env, options), Keyword.drop(options, keys)) |> pretty(resource)
+      [resource, action | args] ->
+        try_exec(resource, action, args, Keyword.merge(env, options), Keyword.drop(options, keys)) |> pretty(resource)
       _ ->
         IO.puts "usage: openstack server list"
     end
@@ -54,7 +53,7 @@ defmodule Openstack.Cli do
     Dict.get(@fields, resource |> String.replace("-", "_") |> String.to_atom)
   end
 
-  def try_exec(resource, action, id \\ nil, options, params) do
+  def try_exec(resource, action, args, options, params) do
     params = Enum.into(params, %{})
     method = String.to_atom("#{String.replace(resource, "-", "_")}_#{String.replace(action, "-", "_")}")
     module = Enum.find [Openstack.Keystone,
@@ -62,7 +61,8 @@ defmodule Openstack.Cli do
                         Openstack.Nova,
                         Openstack.Cinder,
                         Openstack.Ceilometer,
-                        Openstack.Glance], fn (x)->
+                        Openstack.Glance,
+                        Openstack.Swift], fn (x)->
       Keyword.has_key?(x.__info__(:functions), method) end
     if module do
       user = %{name: options[:os_username], password: options[:os_password]}
@@ -75,10 +75,7 @@ defmodule Openstack.Cli do
       end
       case Openstack.authenticate(options[:os_auth_url], user, scope) do
         {:ok, token} ->
-          case id do
-            nil -> apply(module, method, [token, options[:os_region], params])
-            x -> apply(module, method, [token, options[:os_region], x, params])
-          end
+          apply(module, method, [token, options[:os_region]] ++ args ++ [params])
         x -> x
       end
     else
@@ -108,11 +105,9 @@ defmodule Openstack.Cli do
         input = String.strip x, ?\n
         {options, argv, _} = OptionParser.parse(OptionParser.split input)
         case argv do
-          [resource, action] ->
-            try_exec(resource, action, env, options) |> pretty(resource)
-          [resource, action, id] ->
-            try_exec(resource, action, id, env, options) |> pretty(resource)
-          _ -> ""
+          [resource, action | args] ->
+            try_exec(resource, action, args, env, options) |> pretty(resource)
+          _ -> IO.puts "usage: server list"
         end
         repl(env, prompt)
     end

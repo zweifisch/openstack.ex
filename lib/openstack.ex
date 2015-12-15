@@ -53,25 +53,40 @@ defmodule Openstack do
   end
 
   def endpoint(token, type) do
-    Enum.find token["catalog"], fn (x)-> x["type"] == type end
+    case Enum.find(token["catalog"], &(&1["type"] == type)) do
+      %{"endpoints" => endpoints} -> {:ok, endpoints}
+      nil -> {:error, "endpoint for #{type} not found"}
+    end
   end
 
   def endpoint(token, type, interface, region) do
-    %{"url" => url} = Enum.find endpoint(token, type)["endpoints"], fn x->
-      x["interface"] == interface && x["region"] == region
+    case endpoint(token, type) do
+      {:ok, endpoints} ->
+        case Enum.find endpoints, &(&1["interface"] == interface && &1["region"] == region) do
+          %{"url" => url} ->
+            case type do
+              "identity" -> {:ok, String.replace(url, "v2.0", "v3")}
+              _ -> {:ok, url}
+            end
+          nil -> {:error, "#{interface} endpoint for #{type} not found in region #{region}"}
+        end
+      x -> x
     end
-    case type do
-      "identity" -> String.replace(url, "v2.0", "v3")
-      _ -> url
+  end
+
+  def request!(token, region, service, method, path, body \\ "", params \\ [], headers \\ []) do
+    case Openstack.endpoint(token, service, "public", region) do
+      {:ok, url} ->
+        HTTPoison.request(method, "#{url}#{path}", body || "",
+                          [{"X-Auth-Token", token["token"]}] ++ headers,
+                          [params: params, proxy: System.get_env("http_proxy")])
+      x -> x
     end
   end
 
   def request(token, region, service, method, path, body \\ "", params \\ []) do
-    url = Openstack.endpoint(token, service, "public", region) <> path
-    case HTTPoison.request(method, url, body && Poison.encode!(body) || "",
-                           [{"X-Auth-Token", token["token"]},
-                            {"Content-Type", "application/json"}],
-                           [params: params, proxy: System.get_env("http_proxy")]) do
+    case request!(token, region, service, method, path,
+                  Poison.encode!(body), params, [{"Content-Type", "application/json"}]) do
       {:ok, %HTTPoison.Response{body: body, status_code: code}} ->
         if "" == body do
           body = "{}"
