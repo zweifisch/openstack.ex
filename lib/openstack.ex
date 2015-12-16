@@ -1,19 +1,19 @@
 defmodule Openstack do
 
+  import Maybe
+
   @doc """
   the base of all authenticate functions
   """
   def authenticate(url, body) when is_map(body) do
     case HTTPoison.post("#{url}/auth/tokens", Poison.encode!(body), [{"Content-Type", "application/json"}], proxy: System.get_env("http_proxy")) do
       {:ok, %HTTPoison.Response{status_code: 201, headers: headers, body: body}} ->
-        case Poison.decode(body) do
-          {:ok, %{"token" => token}} -> {:ok, Dict.put_new(token, "token", Enum.into(headers, %{})["X-Subject-Token"])}
-        end
+        Poison.decode(body)
+          |> ok fn(%{"token" => token})-> Dict.put_new(token, "token", Enum.into(headers, %{})["X-Subject-Token"]) end
       {:ok, %HTTPoison.Response{status_code: code, body: body}} ->
-        case Poison.decode(body) do
-          {:ok, decoded} -> {:error, %{code: code, body: decoded}}
-          _ -> {:error, %{code: code, body: body}}
-        end
+        Poison.decode(body)
+          |> ok(fn(decoded) -> {:error, %{code: code, body: decoded}} end)
+          |> error(fn(_) -> %{code: code, body: body} end)
       x -> x
     end
   end
@@ -60,8 +60,8 @@ defmodule Openstack do
   end
 
   def endpoint(token, type, interface, region) do
-    case endpoint(token, type) do
-      {:ok, endpoints} ->
+    endpoint(token, type)
+      |> ok fn(endpoints) ->
         case Enum.find endpoints, &(&1["interface"] == interface && &1["region"] == region) do
           %{"url" => url} ->
             case type do
@@ -70,37 +70,31 @@ defmodule Openstack do
             end
           nil -> {:error, "#{interface} endpoint for #{type} not found in region #{region}"}
         end
-      x -> x
-    end
+      end
   end
 
   def request!(token, region, service, method, path, body \\ "", params \\ [], headers \\ []) do
-    case Openstack.endpoint(token, service, "public", region) do
-      {:ok, url} ->
+    Openstack.endpoint(token, service, "public", region)
+      |> ok fn(url)->
         HTTPoison.request(method, "#{url}#{path}", body || "",
                           [{"X-Auth-Token", token["token"]}] ++ headers,
                           [params: params, proxy: System.get_env("http_proxy")])
-      x -> x
-    end
+      end
   end
 
   def request(token, region, service, method, path, body \\ "", params \\ []) do
-    case request!(token, region, service, method, path,
-                  Poison.encode!(body), params, [{"Content-Type", "application/json"}]) do
-      {:ok, %HTTPoison.Response{body: body, status_code: code}} ->
-        if "" == body do
-          body = "{}"
-        end
-        case Poison.decode(body) do
-          {:ok, decoded} ->
-            cond do
-              code < 400 -> {:ok, decoded}
-              true -> {:error, decoded}
-            end
-          _ -> {:error, body}
-        end
-      x -> x
-    end
+    Poison.encode(body)
+      |> ok(fn(encoded)->
+        request!(token, region, service, method, path,
+                 encoded, params, [{"Content-Type", "application/json"}]) end)
+      |> ok(fn(%{body: body, status_code: code})->
+          cond do
+            body == "" && code < 400 -> "{}"
+            code < 400 -> body
+            true -> {:error, body}
+          end
+        end)
+      |> ok(&Poison.decode/1)
   end
 
   defmacro defresource(name, service, path, singular, actions \\ []) do

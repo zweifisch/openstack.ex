@@ -1,5 +1,7 @@
 defmodule Openstack.Swift do
 
+  import Maybe
+
   def request(token, region, method, path, params, body \\ "") do
     Openstack.request(token, region, "object-store", method, path, body, Dict.merge(params, format: "json"))
   end
@@ -25,21 +27,18 @@ defmodule Openstack.Swift do
   end
 
   def bucket_info(token, region, id, params \\ %{}) do
-    case Openstack.request!(token, region, "object-store", :head, "/" <> id, "", params) do
-      {:ok, %{headers: headers, status_code: code}} ->
-        {:ok, headers |> Enum.filter(fn({key, _})-> String.starts_with?(key , "X") end) |> Enum.into(%{})}
-      x -> x
-    end
+    Openstack.request!(token, region, "object-store", :head, "/" <> id, "", params)
+      |> ok fn (%{headers: headers, status_code: _}) ->
+        headers
+          |> Enum.filter(fn({key, _})-> String.starts_with?(key , "X") end)
+          |> Enum.into(%{})
+      end
   end
 
   def bucket_upload(token, region, path, file, params \\ %{}) do
-    case File.read(Path.expand(file)) do
-      {:ok, file} ->
-        case Openstack.request!(token, region, "object-store", :put, "/" <> path, file, params) do
-          {:ok, %{headers: headers}} -> {:ok, headers |> Enum.into(%{})}
-        end
-      x -> x
-    end
+    File.read(Path.expand(file))
+      |> ok(fn(file)-> Openstack.request!(token, region, "object-store", :put, "/" <> path, file, params) end)
+      |> ok(fn(%{headers: headers})-> Enum.into(headers, %{}) end)
   end
 
   def object_delete(token, region, path, params \\ %{}) do

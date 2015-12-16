@@ -26,6 +26,7 @@ defmodule Openstack.Mixfile do
   defp deps do
     [{:httpoison, "~> 0.7.2"},
      {:poison, "~> 1.5"},
-     {:table, "~> 0.0.2"}]
+     {:table, "~> 0.0.2"},
+     {:maybe, "~> 0.0.1"}]
   end
 end

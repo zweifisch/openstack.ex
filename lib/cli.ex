@@ -1,5 +1,7 @@
 defmodule Openstack.Cli do
 
+  import Maybe
+
   @fields %{
     user: ~w(name id enabled domain_id email),
     project: ~w(name id enabled domain_id),
@@ -73,11 +75,8 @@ defmodule Openstack.Cli do
       if options[:os_project_name] do
         scope = %{project: %{name: options[:os_project_name], domain: %{name: options[:os_domain_name]}}}
       end
-      case Openstack.authenticate(options[:os_auth_url], user, scope) do
-        {:ok, token} ->
-          apply(module, method, [token, options[:os_region]] ++ args ++ [params])
-        x -> x
-      end
+      Openstack.authenticate(options[:os_auth_url], user, scope)
+        |> ok(fn(token)-> apply(module, method, [token, options[:os_region]] ++ args ++ [params]) end)
     else
       {:error, "command not found"}
     end
@@ -94,6 +93,7 @@ defmodule Openstack.Cli do
       {:error, %HTTPoison.Error{reason: reason}} -> IO.puts reason
       {:error, error} when is_bitstring error -> IO.puts error
       {:error, error} -> IO.inspect error
+      x -> IO.inspect x
     end
   end
 
