@@ -82,11 +82,11 @@ defmodule Openstack do
       end
   end
 
-  def request(token, region, service, method, path, body \\ "", params \\ []) do
+  def request(token, region, service, method, path, body \\ "", params \\ [], headers \\ []) do
     Poison.encode(body)
       |> ok(fn(encoded)->
         request!(token, region, service, method, path,
-                 encoded, params, [{"Content-Type", "application/json"}]) end)
+                 encoded, params, [{"Content-Type", "application/json"}] ++ headers) end)
       |> ok(fn(%{body: body, status_code: code})->
           cond do
             body == "" && code < 400 -> "{}"
