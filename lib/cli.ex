@@ -24,7 +24,10 @@ defmodule Openstack.Cli do
     vpn_ikepolicy: ~w(id auth_algorithm description encryption_algorithm),
     security_group: ~w(id name tenant_id),
     security_group_rule: ~w(id direction security_group_id tenant_id),
-    port: ~w(id device_id device_owner tenatn_id),
+    port: ~w(id device_id device_owner tenant_id),
+    vpn_service: ~w(id status router_id subnet_id),
+    vpn_ipsec_site_connection: ~w(id peer_address peer_cidrs),
+    qos_policy: ~w(id name shared tenant_id rules),
   }
 
   def main(args) do

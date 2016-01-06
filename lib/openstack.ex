@@ -82,8 +82,8 @@ defmodule Openstack do
       end
   end
 
-  def request(token, region, service, method, path, body \\ "", params \\ [], headers \\ []) do
-    Poison.encode(body)
+  def request(token, region, service, method, path, body \\ nil, params \\ [], headers \\ []) do
+    (body && Poison.encode(body) || {:ok, ""})
       |> ok(fn(encoded)->
         request!(token, region, service, method, path,
                  encoded, params, [{"Content-Type", "application/json"}] ++ headers) end)
