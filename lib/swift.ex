@@ -28,11 +28,11 @@ defmodule Openstack.Swift do
 
   def bucket_info(token, region, id, params \\ %{}) do
     Openstack.request!(token, region, "object-store", :head, "/" <> id, "", params)
-      |> ok fn (%{headers: headers, status_code: _}) ->
+      |> ok(fn (%{headers: headers, status_code: _}) ->
         headers
           |> Enum.filter(fn({key, _})-> String.starts_with?(key , "X") end)
           |> Enum.into(%{})
-      end
+      end)
   end
 
   def bucket_upload(token, region, path, file, params \\ %{}) do

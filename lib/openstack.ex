@@ -9,7 +9,7 @@ defmodule Openstack do
     case HTTPoison.post("#{url}/auth/tokens", Poison.encode!(body), [{"Content-Type", "application/json"}], proxy: System.get_env("http_proxy")) do
       {:ok, %HTTPoison.Response{status_code: 201, headers: headers, body: body}} ->
         Poison.decode(body)
-          |> ok fn(%{"token" => token})-> Dict.put_new(token, "token", Enum.into(headers, %{})["X-Subject-Token"]) end
+          |> ok(fn(%{"token" => token})-> Dict.put_new(token, "token", Enum.into(headers, %{})["X-Subject-Token"]) end)
       {:ok, %HTTPoison.Response{status_code: code, body: body}} ->
         Poison.decode(body)
           |> ok(fn(decoded) -> {:error, %{code: code, body: decoded}} end)
@@ -61,7 +61,7 @@ defmodule Openstack do
 
   def endpoint(token, type, interface, region) do
     endpoint(token, type)
-      |> ok fn(endpoints) ->
+      |> ok(fn(endpoints) ->
         case Enum.find endpoints, &(&1["interface"] == interface && &1["region"] == region) do
           %{"url" => url} ->
             case type do
@@ -70,16 +70,16 @@ defmodule Openstack do
             end
           nil -> {:error, "#{interface} endpoint for #{type} not found in region #{region}"}
         end
-      end
+      end)
   end
 
   def request!(token, region, service, method, path, body \\ "", params \\ [], headers \\ []) do
     Openstack.endpoint(token, service, "public", region)
-      |> ok fn(url)->
+      |> ok(fn(url)->
         HTTPoison.request(method, "#{url}#{path}", body || "",
                           [{"X-Auth-Token", token["token"]}] ++ headers,
                           [params: params, proxy: System.get_env("http_proxy")])
-      end
+      end)
   end
 
   def request(token, region, service, method, path, body \\ nil, params \\ [], headers \\ []) do
@@ -97,6 +97,10 @@ defmodule Openstack do
       |> ok(&Poison.decode/1)
   end
 
+  def extract_params(path) do
+    List.flatten Regex.scan ~r/:([^\:\/]+)/, path, capture: :all_but_first
+  end
+
   defmacro defresource(name, service, path, singular, actions \\ []) do
     predef = [
       list: {:get, ""},
@@ -105,29 +109,35 @@ defmodule Openstack do
       show: {:get, "/:id"},
       delete: {:delete, "/:id"},
     ]
-    cond do
-      is_tuple(singular) ->
-        {singular, plural} = singular
-      true -> plural = "#{singular}s"
-    end
+    {singular, plural} =
+      cond do
+        is_tuple(singular) -> singular
+        true -> {singular, "#{singular}s"}
+      end
     case Keyword.pop(actions, :only) do
       {nil, actions} -> actions = Keyword.merge(predef, actions)
       {only, actions} -> actions = Keyword.merge(Keyword.take(predef, only), actions)
     end
     Enum.map actions, fn {action, {method, segment}} ->
-      args = []
-      if segment =~ ~r/:id/ do
-        args = [quote do: id]
-      end
+      full_path = path <> segment
+      path_params = extract_params(full_path)
+      args = Enum.map(path_params, fn(x)->
+        Macro.var String.to_atom(x), nil
+      end)
       if method in [:post, :patch, :put] do
         args = args ++ [quote do: body]
       end
       quote do
         def unquote(:"#{name}_#{action}")(token, region, unquote_splicing(args), params \\ []) do
+
+          path =
+            unquote(
+              Enum.reduce(path_params, full_path, fn(param, acc)->
+                quote do: String.replace(unquote(acc), ":#{unquote(param)}", unquote(Macro.var(String.to_atom(param), nil)))
+              end))
+
           case Openstack.request(token, region, unquote(service), unquote(method),
-                                 unquote(path) <> unquote((quote do: id) in args
-                                                          && (quote do: (String.replace(unquote(segment), ":id", id)))
-                                                          || segment),
+                                 path,
                                  unquote((quote do: body) in args && (quote do: %{unquote(:"#{singular}") => body})),
                                  params) do
             {:ok, body} ->
@@ -142,11 +152,16 @@ defmodule Openstack do
           end
         end
         def unquote(:"#{name}_#{action}!")(token, region, unquote_splicing(args), params \\ []) do
+
+          path =
+            unquote(
+              Enum.reduce(path_params, full_path, fn(param, acc)->
+                quote do: String.replace(unquote(acc), ":#{unquote(param)}", unquote(Macro.var(String.to_atom(param), nil)))
+              end))
+
           Openstack.request(token, region, unquote(service), unquote(method),
-                                 unquote(path) <> unquote((quote do: id) in args
-                                                          && (quote do: (String.replace(unquote(segment), ":id", id)))
-                                                          || segment),
-                                 unquote((quote do: body) in args && (quote do: body)), params)
+                            path,
+                            unquote((quote do: body) in args && (quote do: body)), params)
         end
       end
     end

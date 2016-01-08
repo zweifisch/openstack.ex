@@ -1,7 +1,6 @@
 defmodule Openstack.Neutron do
 
   import Openstack, only: :macros
-  import Maybe
 
   defresource "network", "network", "/v2.0/networks", "network", update: {:put, "/:id"}
   defresource "subnet", "network", "/v2.0/subnets", "subnet", update: {:put, "/:id"}
@@ -35,15 +34,13 @@ defmodule Openstack.Neutron do
     update: {:put, "/:id"},
     bandwidth_limit_rule: {:post, "/:id/bandwidth_limit_rules"}
 
-  defresource "qos_rule_type", "network", "/v2.0/qos/rule-types", "rule_type"
+  defresource "qos_rule_type", "network", "/v2.0/qos/rule-types", "rule_type", only: [:list]
+
+  defresource "bandwidth_limit_rule", "network",
+    "/v2.0/qos/policies/:policy_id/bandwidth_limit_rules", "bandwidth_limit_rule", update: {:put, "/:id"}
 
   def router_add_interface(token, region, id, params) do
     router_add_router_interface!(token, region, id, params)
-  end
-
-  def qos_policy_bandwidth_limit_rule_create(token, region, id, params) do
-    qos_policy_bandwidth_limit_rule!(token, region, id, %{bandwidth_limit_rule: params})
-      |> ok(fn(body)-> Map.get(body, "bandwidth_limit_rule") end)
   end
 
 end
