@@ -1,5 +1,7 @@
 # Openstack
 
+[![hex][hex-image]][hex-url]
+
 Openstack Client for Elixir
 
 ## Installation
@@ -7,7 +9,7 @@ Openstack Client for Elixir
 First, add openstack to your dependencies in `mix.exs`:
 
     def deps do
-        [{:openstack, "~> 0.0.2"}]
+        [{:openstack, "~> 0.0.3"}]
     end
 
 Then, update your dependencies:
@@ -87,3 +89,6 @@ Or using environment variables:
     firewall create --firewall-policy-id <id>
 
     lb-pool create --name asdf --lb-method ROUND_ROBIN --protocol TCP --subnet-id <id>
+
+[hex-image]: https://img.shields.io/hexpm/v/openstack.svg?style=flat
+[hex-url]: https://hex.pm/packages/openstack

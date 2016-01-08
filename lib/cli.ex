@@ -28,6 +28,7 @@ defmodule Openstack.Cli do
     vpn_service: ~w(id status router_id subnet_id),
     vpn_ipsec_site_connection: ~w(id peer_address peer_cidrs),
     qos_policy: ~w(id name shared tenant_id rules),
+    stack: ~w(id description parent stack_name stack_owner stack_status  stack_user_project_id tags),
   }
 
   def main(args) do
@@ -68,6 +69,7 @@ defmodule Openstack.Cli do
                         Openstack.Cinder,
                         Openstack.Ceilometer,
                         Openstack.Glance,
+                        Openstack.Heat,
                         Openstack.Swift], fn (x)->
       Keyword.has_key?(x.__info__(:functions), method) end
     if module do

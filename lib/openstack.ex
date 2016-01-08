@@ -78,7 +78,8 @@ defmodule Openstack do
       |> ok(fn(url)->
         HTTPoison.request(method, "#{url}#{path}", body || "",
                           [{"X-Auth-Token", token["token"]}] ++ headers,
-                          [params: params, proxy: System.get_env("http_proxy")])
+                          [params: params, proxy: System.get_env("http_proxy"),
+                           follow_redirect: true, max_redirect: 3])
       end)
   end
 
