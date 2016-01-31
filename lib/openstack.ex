@@ -79,7 +79,7 @@ defmodule Openstack do
         HTTPoison.request(method, "#{url}#{path}", body || "",
                           [{"X-Auth-Token", token["token"]}] ++ headers,
                           [params: params, proxy: System.get_env("http_proxy"),
-                           follow_redirect: true, max_redirect: 3])
+                           follow_redirect: true, max_redirect: 3, recv_timeout: 60000])
       end)
   end
 
@@ -111,9 +111,10 @@ defmodule Openstack do
       delete: {:delete, "/:id"},
     ]
     {singular, plural} =
-      cond do
-        is_tuple(singular) -> singular
-        true -> {singular, "#{singular}s"}
+      case singular do
+        {s, p} -> {s, p}
+        nil -> {nil, nil}
+        singular -> {singular, "#{singular}s"}
       end
     case Keyword.pop(actions, :only) do
       {nil, actions} -> actions = Keyword.merge(predef, actions)
@@ -139,30 +140,20 @@ defmodule Openstack do
 
           case Openstack.request(token, region, unquote(service), unquote(method),
                                  path,
-                                 unquote((quote do: body) in args && (quote do: %{unquote(:"#{singular}") => body})),
+                                 unquote((quote do: body) in args && (quote do: unquote(singular) && %{unquote(:"#{singular}") => body} || body)),
                                  params) do
             {:ok, body} ->
               case unquote(action) do
+                :list when is_map(body) ->
+                  {:ok, unquote(plural && (quote do: Dict.get(body, unquote(plural), body)) || (quote do: body))}
                 :list ->
-                  {:ok, Dict.get(body, unquote(plural), body)}
+                  {:ok, body}
                 :delete -> {:ok, body}
                 _ ->
                   {:ok, Dict.get(body, unquote(singular), body)}
               end
             x -> x
           end
-        end
-        def unquote(:"#{name}_#{action}!")(token, region, unquote_splicing(args), params \\ []) do
-
-          path =
-            unquote(
-              Enum.reduce(path_params, full_path, fn(param, acc)->
-                quote do: String.replace(unquote(acc), ":#{unquote(param)}", unquote(Macro.var(String.to_atom(param), nil)))
-              end))
-
-          Openstack.request(token, region, unquote(service), unquote(method),
-                            path,
-                            unquote((quote do: body) in args && (quote do: body)), params)
         end
       end
     end

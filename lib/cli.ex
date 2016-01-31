@@ -29,6 +29,10 @@ defmodule Openstack.Cli do
     vpn_ipsec_site_connection: ~w(id peer_address peer_cidrs),
     qos_policy: ~w(id name shared tenant_id rules),
     stack: ~w(id description parent stack_name stack_owner stack_status  stack_user_project_id tags),
+    event: ~w(id event_time resource_name resource_status resource_status_reason),
+    metric: ~w(id name resource_id created_by_user_id created_by_project_id),
+    resource: ~w(id created_by_user_id created_by_project_id),
+    alarm: ~w(name state project_id alarm_id),
   }
 
   def main(args) do
@@ -70,6 +74,7 @@ defmodule Openstack.Cli do
                         Openstack.Ceilometer,
                         Openstack.Glance,
                         Openstack.Heat,
+                        Openstack.Gnocchi,
                         Openstack.Swift], fn (x)->
       Keyword.has_key?(x.__info__(:functions), method) end
     if module do

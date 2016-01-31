@@ -90,5 +90,27 @@ Or using environment variables:
 
     lb-pool create --name asdf --lb-method ROUND_ROBIN --protocol TCP --subnet-id <id>
 
+    qos-policy list
+
+    vpn-service create --router-id <id> --subnet-id <id>
+
+    vpn-ipsec-site-connection create \
+        --ikepolicy-id <id> \
+        --vpnservice-id <id> \
+        --peer-address 192.168.1.1 \
+        --ipsecpolicy-id <id> \
+        --peer-id 12 \
+        --psk 12 \
+        --peer-cidrs 192.168.1.0/24
+
+    bandwidth-limit-rule create <id> --max-kbps 10000
+
+    resource show instance <server-id>
+    metric show <id>
+    measure list <id>
+
+    router-interface create <router-id> --subnet-id <id>
+
+
 [hex-image]: https://img.shields.io/hexpm/v/openstack.svg?style=flat
 [hex-url]: https://hex.pm/packages/openstack

@@ -7,15 +7,16 @@ defmodule Openstack.Neutron do
 
   defresource "port", "network", "/v2.0/ports", "port", update: {:put, "/:id"}
   defresource "floatingip", "network", "/v2.0/floatingips", "floatingip", update: {:put, "/:id"}
-  defresource "router", "network", "/v2.0/routers", "router", update: {:put, "/:id"}, add_router_interface: {:post, "/:id/add_router_interface"}
+  defresource "router", "network", "/v2.0/routers", "router", update: {:put, "/:id"}
+  defresource "router_interface", "network", "/v2.0/routers/:id/add_router_interface", nil, only: [:create], create: {:put, ""}
 
   defresource "security_group", "network", "/v2.0/security-groups", "security_group", update: {:put, "/:id"}
   defresource "security_group_rule", "network", "/v2.0/security-group-rules", "security_group_rule", update: {:put, "/:id"}
 
   defresource "lb_vip", "network", "/v2.0/lb/vips", "vip", update: {:put, "/:id"}
   defresource "lb_pool", "network", "/v2.0/lb/pools", "pool", update: {:put, "/:id"}
-  defresource "lb-health-monitor", "network", "/v2.0/lb/health_monitors", "health_monitor", update: {:put, "/:id"}
-  defresource "lb-member", "network", "/v2.0/lb/members", "member", update: {:put, ":/id"}
+  defresource "lb_health_monitor", "network", "/v2.0/lb/health_monitors", "health_monitor", update: {:put, "/:id"}
+  defresource "lb_member", "network", "/v2.0/lb/members", "member", update: {:put, ":/id"}
 
   defresource "lb", "network", "/v2.0/lbaas/loadbalancers", "loadbalancer", update: {:put, "/:id"}
 
@@ -38,9 +39,5 @@ defmodule Openstack.Neutron do
 
   defresource "bandwidth_limit_rule", "network",
     "/v2.0/qos/policies/:policy_id/bandwidth_limit_rules", "bandwidth_limit_rule", update: {:put, "/:id"}
-
-  def router_add_interface(token, region, id, params) do
-    router_add_router_interface!(token, region, id, params)
-  end
 
 end

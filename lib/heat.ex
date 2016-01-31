@@ -4,4 +4,6 @@ defmodule Openstack.Heat do
 
   defresource "stack", "orchestration", "/stacks", "stack"
 
+  defresource "event", "orchestration", "/stacks/:stack_name/events", "event", only: [:list]
+
 end
