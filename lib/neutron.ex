@@ -40,4 +40,16 @@ defmodule Openstack.Neutron do
   defresource "bandwidth_limit_rule", "network",
     "/v2.0/qos/policies/:policy_id/bandwidth_limit_rules", "bandwidth_limit_rule", update: {:put, "/:id"}
 
+  defresource "gbp_policy_action", "network", "/v2.0/grouppolicy/policy_actions", "policy_action",
+    update: {:put, "/:id"}
+
+  defresource "gbp_policy_classifier", "network", "/v2.0/grouppolicy/policy_classifiers", "policy_classifier",
+    update: {:put, "/:id"}
+
+  defresource "gbp_policy_rule", "network", "/v2.0/grouppolicy/policy_rules", "policy_rule",
+    update: {:put, "/:id"}
+
+  defresource "gbp_policy_rule_set", "network", "/v2.0/grouppolicy/policy_rule_sets", "policy_rule_set",
+    update: {:put, "/:id"}
+
 end
