@@ -11,10 +11,9 @@ defmodule Openstack.Mixfile do
   def project do
     [app: :openstack,
      version: "0.0.4",
-     elixir: "~> 1.1",
+     elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     escript: [main_module: Openstack.Cli],
      deps: deps,
      package: package]
   end
@@ -26,7 +25,6 @@ defmodule Openstack.Mixfile do
   defp deps do
     [{:httpoison, "~> 0.8.0"},
      {:poison, "~> 1.5"},
-     {:table, "~> 0.0.4"},
      {:maybe, "~> 0.0.1"}]
   end
 end
