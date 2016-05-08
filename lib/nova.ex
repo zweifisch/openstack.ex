@@ -25,4 +25,6 @@ defmodule Openstack.Nova do
   defresource "flavor", "compute", "/flavors", "flavor", update: {:put, "/:id"}
   defresource "flavor_detail", "compute", "/flavors/detail", "flavor", only: [:list]
 
+  defresource "server_metadata", "compute", "/servers/:server_id/metadata", "metadata", update: {:put, ""}
+
 end

@@ -9,4 +9,6 @@ defmodule Openstack.Gnocchi do
   defresource "resource", "metric", "/v1/resource/:type", nil, history: {:get, "/:id/history"}
   defresource "capability", "metric", "/v1/capabilities", nil, only: [:list]
 
+  defresource "aggregation_resource_metric", "metric", "/v1/aggregation/resource/:resource_type/metric/:metric_type", nil
+
 end

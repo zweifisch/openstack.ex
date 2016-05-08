@@ -14,11 +14,14 @@ defmodule Openstack.Neutron do
   defresource "security_group_rule", "network", "/v2.0/security-group-rules", "security_group_rule", update: {:put, "/:id"}
 
   defresource "lb_vip", "network", "/v2.0/lb/vips", "vip", update: {:put, "/:id"}
-  defresource "lb_pool", "network", "/v2.0/lb/pools", "pool", update: {:put, "/:id"}
   defresource "lb_health_monitor", "network", "/v2.0/lb/health_monitors", "health_monitor", update: {:put, "/:id"}
   defresource "lb_member", "network", "/v2.0/lb/members", "member", update: {:put, ":/id"}
 
   defresource "lb", "network", "/v2.0/lbaas/loadbalancers", "loadbalancer", update: {:put, "/:id"}
+  defresource "lb_pool", "network", "/v2.0/lbaas/pools", "pool", update: {:put, "/:id"}
+  defresource "lb_listener", "network", "/v2.0/lbaas/listeners", "loadbalancer", update: {:put, "/:id"}
+  defresource "pool_member", "network", "/v2.0/lbaas/pools/:pool_id/members", "member", update: {:put, "/:id"}
+  defresource "lb_status", "network", "/v2.0/lbaas/loadbalancers/:id/statuses", {nil, "statuses"}, only: [:list]
 
   defresource "firewall", "network", "/v2.0/fw/firewalls", "firewall", update: {:put, "/:id"}
   defresource "firewall_policy", "network", "/v2.0/fw/firewall_policies", {"firewall_policy", "firewall_policies"}, update: {:put, "/:id"}
