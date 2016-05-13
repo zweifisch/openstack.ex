@@ -2,7 +2,7 @@ defmodule Openstack.Nova do
 
   import Openstack, only: :macros
 
-  defresource "server", "compute", "/servers", "server", update: {:put, "/:id"}
+  defresource "server", "compute", "/servers", "server", update: [:put, "/:id"]
   defresource "server_action", "compute", "/servers/:id/action", nil, only: [:create]
 
   defresource "server_detail", "compute", "/servers/detail", "server", only: [:list]
@@ -22,9 +22,16 @@ defmodule Openstack.Nova do
     server_action_create(token, region, id, %{"createImage": params})
   end
 
-  defresource "flavor", "compute", "/flavors", "flavor", update: {:put, "/:id"}
+  defresource "flavor", "compute", "/flavors", "flavor", update: [:put, "/:id"]
   defresource "flavor_detail", "compute", "/flavors/detail", "flavor", only: [:list]
 
-  defresource "server_metadata", "compute", "/servers/:server_id/metadata", "metadata", update: {:put, ""}
+  defresource "server_metadata", "compute", "/servers/:server_id/metadata", "metadata", update: [:put]
+
+  defresource "hypervisor", "compute", "/os-hypervisors", "hypervisor",
+    list_detail: [:get, "/detail", "hypervisors"],
+    uptime: [:get, "/:id/uptime"],
+    statistics: [:get, "/statistics", "hypervisor_statistics"]
+
+  defresource "aggregate", "compute", "/os-aggregates", "aggregate"
 
 end

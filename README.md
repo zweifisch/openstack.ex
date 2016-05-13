@@ -35,7 +35,7 @@ Then, update your dependencies:
         defresource "server", "compute", "/servers",
             {"server", "servers"},
             only: [:list, :show],
-            action: {:post, "/:id/action"}
+            action: [:post, "/:id/action"]
     end
 
 [hex-image]: https://img.shields.io/hexpm/v/openstack.svg?style=flat

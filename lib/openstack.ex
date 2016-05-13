@@ -98,34 +98,43 @@ defmodule Openstack do
       |> ok(&Poison.decode/1)
   end
 
-  def extract_params(path) do
-    List.flatten Regex.scan ~r/:([^\:\/]+)/, path, capture: :all_but_first
+  defp extract_params(path) do
+    Regex.scan(~r/:([^\:\/]+)/, path, capture: :all_but_first) |> List.flatten
   end
 
-  defmacro defresource(name, service, path, singular, actions \\ []) do
-    predef = [
-      list: {:get, ""},
-      create: {:post, ""},
-      update: {:patch, "/:id"},
-      show: {:get, "/:id"},
-      delete: {:delete, "/:id"},
-    ]
+  defp normalize_actions(actions, singular) do
     {singular, plural} =
       case singular do
         {s, p} -> {s, p}
         nil -> {nil, nil}
-        singular -> {singular, "#{singular}s"}
+        s when is_binary(s) -> {s, "#{singular}s"}
       end
-    case Keyword.pop(actions, :only) do
-      {nil, actions} -> actions = Keyword.merge(predef, actions)
-      {only, actions} -> actions = Keyword.merge(Keyword.take(predef, only), actions)
+    predef = [
+      list: [:get, "", plural],
+      create: [:post, "", singular],
+      update: [:patch, "/:id", singular],
+      show: [:get, "/:id", singular],
+      delete: [:delete, "/:id", singular],
+    ]
+    actions = case Keyword.pop(actions, :only) do
+      {nil, actions} -> Keyword.merge(predef, actions)
+      {only, actions} -> Keyword.merge(Keyword.take(predef, only), actions)
     end
-    Enum.map actions, fn {action, {method, segment}} ->
+
+    Enum.map actions, fn
+      {action, [method]} -> {action, method, "", singular}
+      {action, [method, segment]} -> {action, method, segment, singular}
+      {action, [method, segment, key]} -> {action, method, segment, key}
+    end
+  end
+
+  defmacro defresource(name, service, path, singular, actions \\ []) do
+    actions = normalize_actions actions, singular
+
+    Enum.map actions, fn {action, method, segment, body_key} ->
       full_path = path <> segment
-      path_params = extract_params(full_path)
-      args = Enum.map(path_params, fn(x)->
-        Macro.var String.to_atom(x), nil
-      end)
+      path_params = extract_params full_path
+      args = Enum.map path_params, &Macro.var(String.to_atom(&1), nil)
       if method in [:post, :patch, :put] do
         args = args ++ [quote do: body]
       end
@@ -134,25 +143,18 @@ defmodule Openstack do
 
           path =
             unquote(
-              Enum.reduce(path_params, full_path, fn(param, acc)->
+              Enum.reduce path_params, full_path, fn(param, acc)->
                 quote do: String.replace(unquote(acc), ":#{unquote(param)}", unquote(Macro.var(String.to_atom(param), nil)))
-              end))
+              end)
 
-          case Openstack.request(token, region, unquote(service), unquote(method),
-                                 path,
-                                 unquote((quote do: body) in args && (quote do: unquote(singular) && %{unquote(:"#{singular}") => body} || body)),
-                                 params) do
-            {:ok, body} ->
-              case unquote(action) do
-                :list when is_map(body) ->
-                  {:ok, unquote(plural && (quote do: Dict.get(body, unquote(plural), body)) || (quote do: body))}
-                :list ->
-                  {:ok, body}
-                :delete -> {:ok, body}
-                _ ->
-                  {:ok, Dict.get(body, unquote(singular), body)}
-              end
-            x -> x
+          with {:ok, body} <- Openstack.request(token, region, unquote(service), unquote(method), path,
+                    unquote((quote do: body) in args && (quote do: unquote(body_key) && %{unquote(:"#{body_key}") => body} || body)),
+                    params) do
+            case unquote(action) do
+              :delete -> {:ok, body}
+              _ when is_list(body) -> {:ok, body}
+              _ -> {:ok, Dict.get(body, unquote(body_key), body)}
+            end
           end
         end
       end

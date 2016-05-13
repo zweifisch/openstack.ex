@@ -1,58 +1,66 @@
-defmodule Openstack.Neutron do
-
+defmodule Openstack.Neutron.Helper do
   import Openstack, only: :macros
 
-  defresource "network", "network", "/v2.0/networks", "network", update: {:put, "/:id"}
-  defresource "subnet", "network", "/v2.0/subnets", "subnet", update: {:put, "/:id"}
+  defmacro defres(name, segment, singular, options \\ []) do
+    options = options ++ [update: [:put]]
+    quote do
+      defresource unquote(name), "network", unquote(segment), unquote(singular), unquote(options)
+    end
+  end
 
-  defresource "port", "network", "/v2.0/ports", "port", update: {:put, "/:id"}
-  defresource "floatingip", "network", "/v2.0/floatingips", "floatingip", update: {:put, "/:id"}
-  defresource "router", "network", "/v2.0/routers", "router", update: {:put, "/:id"}
-  defresource "router_interface", "network", "/v2.0/routers/:id/add_router_interface", nil, only: [:create], create: {:put, ""}
+end
 
-  defresource "security_group", "network", "/v2.0/security-groups", "security_group", update: {:put, "/:id"}
-  defresource "security_group_rule", "network", "/v2.0/security-group-rules", "security_group_rule", update: {:put, "/:id"}
+defmodule Openstack.Neutron do
+  import Openstack.Neutron.Helper, only: :macros
 
-  defresource "lb_vip", "network", "/v2.0/lb/vips", "vip", update: {:put, "/:id"}
-  defresource "lb_health_monitor", "network", "/v2.0/lb/health_monitors", "health_monitor", update: {:put, "/:id"}
-  defresource "lb_member", "network", "/v2.0/lb/members", "member", update: {:put, ":/id"}
+  defres "network", "/v2.0/networks", "network"
+  defres "subnet", "/v2.0/subnets", "subnet"
 
-  defresource "lb", "network", "/v2.0/lbaas/loadbalancers", "loadbalancer", update: {:put, "/:id"}
-  defresource "lb_pool", "network", "/v2.0/lbaas/pools", "pool", update: {:put, "/:id"}
-  defresource "lb_listener", "network", "/v2.0/lbaas/listeners", "loadbalancer", update: {:put, "/:id"}
-  defresource "pool_member", "network", "/v2.0/lbaas/pools/:pool_id/members", "member", update: {:put, "/:id"}
-  defresource "lb_status", "network", "/v2.0/lbaas/loadbalancers/:id/statuses", {nil, "statuses"}, only: [:list]
+  defres "port", "/v2.0/ports", "port"
+  defres "floatingip", "/v2.0/floatingips", "floatingip"
+  defres "router", "/v2.0/routers", "router"
+  defres "router_interface", "/v2.0/routers/:id/add_router_interface", nil,
+    only: [:create],
+    create: [:put, ""]
 
-  defresource "firewall", "network", "/v2.0/fw/firewalls", "firewall", update: {:put, "/:id"}
-  defresource "firewall_policy", "network", "/v2.0/fw/firewall_policies", {"firewall_policy", "firewall_policies"}, update: {:put, "/:id"}
-  defresource "firewall_rule", "network", "/v2.0/fw/firewall_rules", "firewall_rule", update: {:put, "/:id"}
+  defres "security_group", "/v2.0/security-groups", "security_group"
+  defres "security_group_rule", "/v2.0/security-group-rules", "security_group_rule"
 
-  defresource "vpn_service", "network", "/v2.0/vpn/vpnservices", "vpnservice", update: {:put, "/:id"}
-  defresource "vpn_ikepolicy", "network", "/v2.0/vpn/ikepolicies", {"ikepolicy", "ikepolicies"}, update: {:put, "/:id"}
-  defresource "vpn_ipsecpolicy", "network", "/v2.0/vpn/ipsecpolicies", {"ipsecpolicy", "ipsecpolicies"}, update: {:put, "/:id"}
-  defresource "vpn_ipsec_site_connection", "network", "/v2.0/vpn/ipsec-site-connections", "ipsec_site_connection", update: {:put, "/:id"}
+  defres "lb_vip", "/v2.0/lb/vips", "vip"
+  defres "lb_health_monitor", "/v2.0/lb/health_monitors", "health_monitor"
+  defres "lb_member", "/v2.0/lb/members", "member"
 
-  defresource "network_quota", "network", "/v2.0/quotas", "quota", only: [:list]
+  defres "lb", "/v2.0/lbaas/loadbalancers", "loadbalancer"
+  defres "lb_pool", "/v2.0/lbaas/pools", "pool"
+  defres "lb_listener", "/v2.0/lbaas/listeners", "loadbalancer"
+  defres "lb_pool_member", "/v2.0/lbaas/pools/:pool_id/members", "member"
+  defres "lb_status", "/v2.0/lbaas/loadbalancers/:id/statuses", {nil, "statuses"},
+    only: [:list]
 
-  defresource "qos_policy", "network", "/v2.0/qos/policies", {"policy", "policies"},
-    update: {:put, "/:id"},
-    bandwidth_limit_rule: {:post, "/:id/bandwidth_limit_rules"}
+  defres "firewall", "/v2.0/fw/firewalls", "firewall"
+  defres "firewall_policy", "/v2.0/fw/firewall_policies", {"firewall_policy", "firewall_policies"}
+  defres "firewall_rule", "/v2.0/fw/firewall_rules", "firewall_rule"
 
-  defresource "qos_rule_type", "network", "/v2.0/qos/rule-types", "rule_type", only: [:list]
+  defres "vpn_service", "/v2.0/vpn/vpnservices", "vpnservice"
+  defres "vpn_ikepolicy", "/v2.0/vpn/ikepolicies", {"ikepolicy", "ikepolicies"}
+  defres "vpn_ipsecpolicy", "/v2.0/vpn/ipsecpolicies", {"ipsecpolicy", "ipsecpolicies"}
+  defres "vpn_ipsec_site_connection", "/v2.0/vpn/ipsec-site-connections", "ipsec_site_connection"
 
-  defresource "bandwidth_limit_rule", "network",
-    "/v2.0/qos/policies/:policy_id/bandwidth_limit_rules", "bandwidth_limit_rule", update: {:put, "/:id"}
+  defres "network_quota", "/v2.0/quotas", "quota", only: [:list]
 
-  defresource "gbp_policy_action", "network", "/v2.0/grouppolicy/policy_actions", "policy_action",
-    update: {:put, "/:id"}
+  defres "qos_policy", "/v2.0/qos/policies", {"policy", "policies"},
+    bandwidth_limit_rule: [:post, "/:id/bandwidth_limit_rules"]
 
-  defresource "gbp_policy_classifier", "network", "/v2.0/grouppolicy/policy_classifiers", "policy_classifier",
-    update: {:put, "/:id"}
+  defres "qos_rule_type", "/v2.0/qos/rule-types", "rule_type", only: [:list]
 
-  defresource "gbp_policy_rule", "network", "/v2.0/grouppolicy/policy_rules", "policy_rule",
-    update: {:put, "/:id"}
+  defres "bandwidth_limit_rule", "/v2.0/qos/policies/:policy_id/bandwidth_limit_rules", "bandwidth_limit_rule"
 
-  defresource "gbp_policy_rule_set", "network", "/v2.0/grouppolicy/policy_rule_sets", "policy_rule_set",
-    update: {:put, "/:id"}
+  defres "gbp_policy_action", "/v2.0/grouppolicy/policy_actions", "policy_action"
+
+  defres "gbp_policy_classifier", "/v2.0/grouppolicy/policy_classifiers", "policy_classifier"
+
+  defres "gbp_policy_rule", "/v2.0/grouppolicy/policy_rules", "policy_rule"
+
+  defres "gbp_policy_rule_set", "/v2.0/grouppolicy/policy_rule_sets", "policy_rule_set"
 
 end

@@ -13,7 +13,7 @@ defmodule Openstack.Manila do
   defresource "share_network", "sharev2", "/share-networks", "share_network"
   defresource "share_network_detail", "sharev2", "/share-networks/detail", "share_network"
 
-  defresource "share_type", "sharev2", "/types", "share_type", list_default: {:get, "/default"}
+  defresource "share_type", "sharev2", "/types", "share_type", list_default: [:get, "/default"]
 
   defresource "share_server", "sharev2", "/share-servers", "share_server"
 

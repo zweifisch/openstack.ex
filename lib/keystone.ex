@@ -7,19 +7,19 @@ defmodule Openstack.Keystone do
   defresource "project", "identity", "/projects", "project"
 
   defresource "project_user_role", "identity", "/projects/:id/users/:user_id/roles/:role_id", nil,
-    grant: {"put", ""},
-    revoke: {"delete", ""}
+    grant: ["put"],
+    revoke: ["delete"]
 
   defresource "domain", "identity", "/domains", "domain"
   defresource "region", "identity", "/regions", "region"
   defresource "credential", "identity", "/credentials", "credential"
-  defresource "role_assignment", "identity", "/role_assignments", "roll_assignment", only: [:list]
+  defresource "role_assignment", "identity", "/role_assignments", "role_assignment", only: [:list]
   defresource "role", "identity", "/roles", "role"
   defresource "endpoint", "identity", "/endpoints", "endpoint"
   defresource "service", "identity", "/services", "service"
 
   defresource "project_endpoint", "identity", "/OS-EP-FILTER/projects/:project_id/endpoints", "endpoint",
-    create: {"put", "/:id"}
+    create: ["put", "/:id"]
   defresource "endpoint_project", "identity", "/OS-EP-FILTER/endpoints/:endpoint_id/projects", "project", only: [:list]
   defresource "endpoint_group", "identity", "/OS-EP-FILTER/endpoint_groups", "endpoint_group"
   defresource "service_provider_group", "identity", "/OS-EP-FILTER/service_providers_groups", "service_provider"
