@@ -34,4 +34,10 @@ defmodule Openstack.Nova do
 
   defresource "aggregate", "compute", "/os-aggregates", "aggregate"
 
+  defresource "aggregate_action", "compute", "/os-aggregates/:id/action", nil, only: [:create]
+
+  defresource "host", "compute", "/os-hosts", "host"
+
+  defresource "service", "compute", "/os-services", "service"
+
 end

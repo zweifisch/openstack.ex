@@ -60,42 +60,54 @@ defmodule Openstack do
   end
 
   def endpoint(token, type, interface, region) do
-    endpoint(token, type)
-      |> ok(fn(endpoints) ->
-        case Enum.find endpoints, &(&1["interface"] == interface && &1["region"] == region) do
-          %{"url" => url} ->
-            case type do
-              "identity" -> {:ok, String.replace(url, "v2.0", "v3")}
-              _ -> {:ok, url}
-            end
-          nil -> {:error, "#{interface} endpoint for #{type} not found in region #{region}"}
-        end
-      end)
+    with {:ok, endpoints} <- endpoint(token, type) do
+      case Enum.find endpoints, &(&1["interface"] == interface and &1["region"] == region) do
+        %{"url" => url} ->
+          case type do
+            "identity" -> {:ok, String.replace(url, "v2.0", "v3")}
+            _ -> {:ok, url}
+          end
+        nil -> {:error, "#{interface} endpoint for #{type} not found in region #{region}"}
+      end
+    end
   end
 
   def request!(token, region, service, method, path, body \\ "", params \\ [], headers \\ []) do
-    Openstack.endpoint(token, service, "public", region)
-      |> ok(fn(url)->
-        HTTPoison.request(method, "#{url}#{path}", body || "",
-                          [{"X-Auth-Token", token["token"]}] ++ headers,
-                          [params: params, proxy: System.get_env("http_proxy"),
-                           follow_redirect: true, max_redirect: 3, recv_timeout: 60000])
-      end)
+    with {:ok, url} <- Openstack.endpoint(token, service, "public", region) do
+      HTTPoison.request method, "#{url}#{path}", body || "", [{"X-Auth-Token", token["token"]}] ++ headers,
+        params: params,
+        proxy: System.get_env("http_proxy"),
+        follow_redirect: true,
+        max_redirect: 3,
+        recv_timeout: 60000
+    end
+  end
+
+  defp encode(nil), do: {:ok, nil}
+  defp encode(false), do: {:ok, nil}
+  defp encode({:file, path}), do: {:ok, {:file, path}}
+  defp encode(body), do: Poison.encode(body)
+
+  defp format_error(body, code) do
+    with {:ok, body} <- Poison.decode(body) do
+      case body do
+        %{"error" => %{"message" => message}} -> {:error, message, code}
+        %{"itemNotFound" => %{"message" => message}} -> {:error, message, code}
+        _ -> {:error, body}
+      end
+    end
   end
 
   def request(token, region, service, method, path, body \\ nil, params \\ [], headers \\ []) do
-    (body && Poison.encode(body) || {:ok, ""})
-      |> ok(fn(encoded)->
-        request!(token, region, service, method, path,
-                 encoded, params, [{"Content-Type", "application/json"}] ++ headers) end)
-      |> ok(fn(%{body: body, status_code: code})->
-          cond do
-            body == "" && code < 400 -> "{}"
-            code < 400 -> body
-            true -> {:error, body}
-          end
-        end)
-      |> ok(&Poison.decode/1)
+    with {:ok, encoded} <- encode(body),
+         {:ok, %{body: body, status_code: code}} <- request!(token, region, service, method, path, encoded, params,
+           [{"Content-Type", "application/json"}] ++ headers) do
+      cond do
+        body == "" and code < 400 -> %{}
+        code < 400 -> Poison.decode(body)
+        true -> format_error(body, code)
+      end
+    end
   end
 
   defp extract_params(path) do

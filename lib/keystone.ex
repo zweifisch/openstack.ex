@@ -10,6 +10,10 @@ defmodule Openstack.Keystone do
     grant: ["put"],
     revoke: ["delete"]
 
+  defresource "domain_user_role", "identity", "/domains/:id/users/:user_id/roles/:role_id", nil,
+    grant: ["put"],
+    revoke: ["delete"]
+
   defresource "domain", "identity", "/domains", "domain"
   defresource "region", "identity", "/regions", "region"
   defresource "credential", "identity", "/credentials", "credential"
